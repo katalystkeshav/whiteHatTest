@@ -1,0 +1,9 @@
+---
+  - name: copy file from remote
+    hosts: test
+    #become: yes
+    tasks:
+      - name: Copy file from remote
+        ansible.builtin.fetch:
+          src: /etc/mongod.conf
+          dest: /home/ansible/test/{{ inventory_hostname }}/

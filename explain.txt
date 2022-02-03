@@ -1,0 +1,16 @@
+
+1. Since it is a dynamic app, I have assumed it has a frontend, backend and DB. 
+   The users search for the url and then the request will be forwarded to cloudfront.
+   First the request will go to S3 and from there it will be sent to the backend. 
+   Backend app will check for the data in redis cahche otherwise it will fetch the data from rds reader.
+   To write the data, app will directly write into the rds master. App and DB are placed in different private subnet. 
+   Nat gateway is placed in public subnet.
+
+2. I have created cloudformation template for Amazon Aurora Rds. 
+   The configuration is of master and reader, since it is a managed service the disk size and iops will be managed by aws. 
+   If we need more instances then we can also enable auto scaling of reader instances.
+
+3. I have used fetch module to copy a file from remote host to our local machine. 
+   Since we are copying a file from multiple instances, we can store the file in different folders based on hostname or some other variable.
+   We can use ansible dynamic inventory to get all the required hosts by their tags and then we can run the script to copy the required file.
+   https://aws.amazon.com/blogs/apn/getting-started-with-ansible-and-dynamic-amazon-ec2-inventory-management/

@@ -1,0 +1,194 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: test app aurora stack
+
+Parameters:
+  EnvironmentName:
+    Description: The string that will be prefixed to each instance name
+    Type: String
+    MinLength: '3'
+    MaxLength: '15'
+    AllowedPattern: '[a-z0-9]*'
+    ConstraintDescription: Environment names must be 3-15 characters and contain only a-z and 0-9.
+  BackupRetention:
+    Description: Backup Retention for rds.
+    Type: String
+    Default: '7'
+  VPC:
+    Description: Select the VPC for aurora mysql.
+    Type: 'AWS::EC2::VPC::Id'
+  DbUsername:
+    Description: App Db Username
+    Type: String
+    MinLength: '5'
+    MaxLength: '15'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DbPassword:
+    Description: App Db Password
+    NoEcho: 'true'
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: >-
+      App Db Password must be 15-41 characters and contain only alpha numeric
+      characters.
+  DbType1:
+    Description: App Db server RDS instance type
+    Type: String
+    AllowedValues:
+      - db.r5.large
+      - db.r5.xlarge
+      - db.r5.2xlarge
+      - db.t2.small
+      - db.r3.large
+      - db.r3.xlarge
+      - db.r3.2xlarge
+      - db.r3.4xlarge
+      - db.r3.8xlarge
+      - db.r4.large
+    ConstraintDescription: must be a valid RDS instance type.
+  DbType2:
+    Description: App Db server RDS instance type
+    Type: String
+    AllowedValues:
+      - db.r5.large
+      - db.r5.xlarge
+      - db.r5.2xlarge
+      - db.t2.small
+      - db.r3.large
+      - db.r3.xlarge
+      - db.r3.2xlarge
+      - db.r3.4xlarge
+      - db.r3.8xlarge
+      - db.r4.large
+    ConstraintDescription: must be a valid RDS instance type.
+  Subnets:
+    Type: 'List<AWS::EC2::Subnet::Id>'
+    Description: The list of SubnetIds where the stack will be launched
+  testSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    Description: Select the security group for test instance
+#  KMSArn:
+#    Type: String
+#    Description: Type the arn of kms key
+
+Resources:
+  DBParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Parameter Group for RDS Instance
+      Family: aurora-mysql5.7
+      Tags:
+        - Key: Name
+          Value: !Join 
+            - ''
+            - - !Ref EnvironmentName
+              - '-db-ParameterGroup'
+
+  DBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Aurora SecurityGroup
+      GroupName: RDS-SERVER-SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref testSecurityGroup
+          Description: Security group of test instance
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: test DB subent groups
+      SubnetIds: !Ref Subnets
+      Tags:
+        - Key: Name
+          Value: !Join 
+            - ''
+            - - !Ref EnvironmentName
+              - '-db-subnetGroup'
+
+  DBCluster:
+    Type: 'AWS::RDS::DBCluster'
+    DependsOn:
+      - DBSubnetGroup
+      - DbParameterGroup
+    Properties:
+      Engine: aurora-mysql
+      EngineVersion: 5.7.12
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DBSecurityGroup
+      #StorageEncrypted: 'true'
+      #KmsKeyId: !Ref KMSArn
+      DBClusterParameterGroupName: default.aurora-mysql5.7
+      BackupRetentionPeriod: !Ref BackupRetention
+      PreferredBackupWindow: '01:00-02:00'
+      PreferredMaintenanceWindow: 'sun:03:00-sun:04:00'
+      Tags:
+        - Key: Name
+          Value: !Join 
+            - ''
+            - - test-
+              - !Ref EnvironmentName
+              - cluster
+
+  RDSinstance1:
+    Type: 'AWS::RDS::DBInstance'
+    DependsOn:
+      - DBCluster
+    Properties:
+      AvailabilityZone: !Sub '${AWS::Region}a'
+      DBClusterIdentifier: !Ref DBCluster
+      DBInstanceClass: !Ref DbType1
+      Engine: aurora-mysql
+      DBParameterGroupName: !Ref DbParameterGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      AutoMinorVersionUpgrade: 'True'
+      AllowMajorVersionUpgrade: 'False'
+      PubliclyAccessible: 'false'
+      Tags:
+        - Key: Name
+          Value: !Join 
+            - ''
+            - - test-
+              - !Ref EnvironmentName
+              - '-db1'
+
+  RDSinstance2:
+    Type: 'AWS::RDS::DBInstance'
+    DependsOn:
+      - DBCluster
+    Properties:
+      AvailabilityZone: !Sub '${AWS::Region}b'
+      DBClusterIdentifier: !Ref DBCluster
+      DBInstanceClass: !Ref DbType2
+      Engine: aurora-mysql
+      DBParameterGroupName: !Ref DbParameterGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      AutoMinorVersionUpgrade: 'True'
+      AllowMajorVersionUpgrade: 'False'
+      MonitoringInterval: 60
+      MonitoringRoleArn: 'arn:aws:iam::457407101116:role/Rds-Enhanced-Monitoring'
+      PubliclyAccessible: 'false'
+      Tags:
+        - Key: Name
+          Value: !Join 
+            - ''
+            - - test-
+              - !Ref EnvironmentName
+              - '-db2'
+
+  DbParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: AppDbParameters
+      Family: aurora-mysql5.7
